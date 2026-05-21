@@ -1,0 +1,129 @@
+function [truth, all_truth] = plot_Fig6b(ordered_data, rel)
+% PLOT_FIG6B Simulates the Bayesian Truth Inference model 
+% to calculate the subjective probability of feedback being true, generating 
+% the violin plots for Figure 6b.
+%
+% INPUTS:
+%   ordered_data - N x 3 cell array of empirical data.
+%   rel          - [N_subjects x 3] matrix of objective agent credibilities.
+%                  (Defaults to [0.5, 0.75, 1] if left empty).
+%
+% OUTPUTS:
+%   truth        - [N_subj x 3 Agents x 2 Valences x 2 Options] matrix of mean 
+%                  posterior probabilities of truth.
+%   all_truth    - Cell array containing all trial-by-trial posteriors.
+
+    n_subj = size(ordered_data, 1);
+
+    if nargin < 2 || isempty(rel)
+        rel = repmat([0.5, 0.75, 1], n_subj, 1);
+    end
+
+    % Initialize integration grid for Bayesian posteriors
+    dx = 0.01;
+    P_rew = (0:dx:1)';
+    uniform = ones(length(P_rew), 6) / (dx * length(P_rew));
+    
+    all_truth = cell(3, 2, 2); % {Agent, Valence, Option}
+    truth = nan(n_subj, 3, 2, 2);
+    lie   = nan(n_subj, 3, 2, 2);
+
+    for ss = 1:n_subj
+        sub_rel = rel(ss, :);
+        Ptruth = cell(2, 2, 3); % {Option, Valence, Agent}
+        Plie   = cell(2, 2, 3); 
+
+        data = ordered_data{ss, 2};
+        n_block = size(data.block, 1);
+        n_trials_block = size(data.block, 2);
+        n_trials = n_block * n_trials_block;
+        
+        pick       = data.pick';
+        feedback   = data.feedback';
+        reward  = data.reward';
+        rand_agent = data.agent';
+        rand_game  = mod(data.game' - 1, 3);
+        
+        if isfield(data, 'response_time')
+            RT = data.response_time';
+        else 
+            RT = inf * ones(size(pick));
+        end
+
+        for trial = 1:n_trials
+            if mod(trial, n_trials_block) == 1 % Reset prior each block
+                f = uniform; 
+            end
+            
+            if ismember(pick(trial), 1:2)
+                if RT(trial) > 150
+                    % 1. Calculate Expected Values for Truth and Lie
+                    idx = 2 * rand_game(trial) + pick(trial);
+                    
+                    t1 = sub_rel(rand_agent(trial)) * P_rew' * f(:, idx);
+                    t0 = sub_rel(rand_agent(trial)) * (1 - P_rew') * f(:, idx);
+                    l0 = (1 - sub_rel(rand_agent(trial))) * P_rew' * f(:, idx);
+                    l1 = (1 - sub_rel(rand_agent(trial))) * (1 - P_rew') * f(:, idx);
+
+                    % 2. Calculate and store Subjective Probability of Truth
+                    if feedback(trial) == reward(trial)
+                        Ptruth{2, rand_agent(trial)} = [Ptruth{2, rand_agent(trial)}; t1 / (t1 + l1)];
+                        Plie{2, rand_agent(trial)}   = [Plie{2, rand_agent(trial)};   l1 / (t1 + l1)];
+                    else
+                        Ptruth{1, rand_agent(trial)} = [Ptruth{1, rand_agent(trial)}; t0 / (t0 + l0)];
+                        Plie{1, rand_agent(trial)}   = [Plie{1, rand_agent(trial)};   l0 / (t0 + l0)];
+                    end
+               
+                    % 3. Update Bayesian Posterior
+                    if feedback(trial) == 1 
+                        f(:, idx) = f(:, idx) .* (sub_rel(rand_agent(trial)) .* P_rew + ...
+                                    (1 - sub_rel(rand_agent(trial))) .* (1 - P_rew));
+                    elseif feedback(trial) == 0
+                        f(:, idx) = f(:, idx) .* (sub_rel(rand_agent(trial)) .* (1 - P_rew) + ...
+                                    (1 - sub_rel(rand_agent(trial))) .* P_rew);
+                    end
+                    
+                    % Normalize posterior
+                    f(:, idx) = f(:, idx) / sum(dx * f(:, idx));
+                end
+            end
+        end
+        
+        % 4. Aggregate Means per Subject
+        for ag = 1:3
+            for val = 1:2
+               truth(ss, ag, val) = mean(Ptruth{1, val, ag}, 1, 'omitnan');
+               all_truth{ag, val} = [all_truth{ag, val, 1}; Ptruth{1, val, ag}];
+               lie(ss, ag, val, 1)   = mean(Plie{1, val, ag}, 1, 'omitnan');
+               
+               truth(ss, ag, val, 2) = mean(Ptruth{2, val, ag}, 1, 'omitnan');
+               all_truth{ag, val, 2} = [all_truth{ag, val, 2}; Ptruth{2, val, ag}];
+               lie(ss, ag, val, 2)   = mean(Plie{2, val, ag}, 1, 'omitnan');
+            end
+        end
+    end
+    
+    % =====================================================================
+    % Visualization (Figure 6b)
+    % =====================================================================
+    % Colors map to 1-star (Purple), 2-star (Orange), 3-star (Yellow)
+    colors = [109, 25,  80; 
+              212, 136, 73; 
+              240, 209, 113] / 255;
+          
+    figure;
+    
+    % Note: Plotting restricted to 1-star (ag=1) and 2-star (ag=2) agents
+
+        
+        % Requires 'daviolinplot' package in the MATLAB path
+    daviolinplot({truth(1, 1, 1), truth(1, 2, 1), ...
+                  truth(2, 1, 2), truth(2, 2, 2)}, ...
+        'colors', colors([1,1,2,2], :), ...
+        'violinalpha', 0.5, 'boxcolor', 'same', 'outliers', 0, ...
+        'violinwidth', 1, 'xtlabels', {'', '', '', ''}, ...
+        'box', 3, 'boxwidth', 3, 'whiskers', 0);
+    
+    ylim([0, 1]);
+
+end
