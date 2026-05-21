@@ -93,7 +93,7 @@ function plot_Parameters(parameters, model)
             %Plot TB
             subplot(1,4,4)
             custom_swarmplot(parameters(:, 4), 1, {''}, [0.3 0.3 0.3], ...
-                'Agent Credibility', 'Truth Bias Parameter (TB)', [], 'median');
+                '', 'Truth Bias Parameter (TB)', [], 'median');
             hold on; 
             plot([0, 2], [0, 0], '--', 'Color', gray_line);
             hold off;

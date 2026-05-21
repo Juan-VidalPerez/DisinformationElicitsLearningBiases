@@ -11,7 +11,13 @@ function [mdl] = MEM_parameters(parameters, model_type)
 %
 % OUTPUTS:
 %   mdl        - Fitted GLME object.
+    
 
+    % Average parameters for each subject across simulations if 3D matrix is passed
+    if size(parameters, 3) > 1
+        parameters = mean(parameters, 3, 'omitnan');
+    end
+    
     n_subj = size(parameters, 1);
 
     switch model_type

@@ -20,7 +20,10 @@ function [mdl] = MEM_parameters(parameters, model_type)
 %   - Model 3 (Relative Valence Bias):
 %       mdl = MEM_parameters(parameters_credval, 3);
 
-
+    if size(parameters,3)>1
+        parameters=mean(parameters,3);
+    end
+    
     n_subj = size(parameters, 1);
 
     switch model_type
