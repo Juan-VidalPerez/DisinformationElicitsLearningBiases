@@ -3,7 +3,7 @@
 ## Overview
 This repository contains the behavioral data and MATLAB computational modeling pipeline for the paper **"Disinformation elicits learning biases"**. 
 
-You can read the reviewed preprint here: [https://elifesciences.org/reviewed-preprints/106073#s2](https://elifesciences.org/reviewed-preprints/106073#s2)
+You can read the reviewed preprint [here](https://elifesciences.org/reviewed-preprints/106073#s2)
 
 The study investigates how feedback reliability and disinformation shape reward learning. To maintain clear organization between the different experimental designs used in the paper, the repository is split into two main directories.
 
